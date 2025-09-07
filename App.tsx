@@ -5,7 +5,7 @@ import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 type GameState = 'welcome' | 'setup' | 'playing' | 'ended';
 type Theme = 'light' | 'dark';
 type Language = 'ko' | 'en' | 'ja';
-type Model = 'gemini-2.5-flash' | 'gemini-1.5-pro';
+type Model = 'gemini-2.5-flash' | 'gemini-2.5-pro';
 type Item = { name: string; description: string };
 type PlayerStatus = {
   health: number;
@@ -44,7 +44,7 @@ const translations = {
     createYourWorld: "나만의 세계 창조하기",
     modelSelectLabel: "AI 모델",
     modelFlash: "⚡️ Gemini 2.5 Flash",
-    modelPro: "✨ Gemini 1.5 Pro",
+    modelPro: "✨ Gemini 2.5 Pro",
     modelFlashDesc: "빠르고 경제적인 모델",
     modelProDesc: "더 창의적이고 강력한 모델",
     genreLabel: "이야기 장르",
@@ -101,7 +101,7 @@ const translations = {
     createYourWorld: "Create Your Own World",
     modelSelectLabel: "AI Model",
     modelFlash: "⚡️ Gemini 2.5 Flash",
-    modelPro: "✨ Gemini 1.5 Pro",
+    modelPro: "✨ Gemini 2.5 Pro",
     modelFlashDesc: "Fast and economical model",
     modelProDesc: "More creative and powerful model",
     genreLabel: "Story Genre",
@@ -158,7 +158,7 @@ const translations = {
     createYourWorld: "自分だけの世界を創造する",
     modelSelectLabel: "AIモデル",
     modelFlash: "⚡️ Gemini 2.5 Flash",
-    modelPro: "✨ Gemini 1.5 Pro",
+    modelPro: "✨ Gemini 2.5 Pro",
     modelProDesc: "より創造的で強力なモデル",
     modelFlashDesc: "高速で経済的なモデル",
     genreLabel: "物語のジャンル",
@@ -629,7 +629,7 @@ const SetupScreen = ({ onStart, t, isLoading, error }: { onStart: (data: Omit<Ga
           <button type="button" onClick={() => setData({ ...data, model: 'gemini-2.5-flash' })} className={data.model === 'gemini-2.5-flash' ? 'selected' : ''}>
               {t('modelFlash')}
           </button>
-          <button type="button" onClick={() => setData({ ...data, model: 'gemini-1.5-pro' })} className={data.model === 'gemini-1.5-pro' ? 'selected' : ''}>
+          <button type="button" onClick={() => setData({ ...data, model: 'gemini-2.5-pro' })} className={data.model === 'gemini-2.5-pro' ? 'selected' : ''}>
               {t('modelPro')}
           </button>
       </div>
