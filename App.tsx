@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameState, PlayerState, Content, Language } from './types';
 import useGameEngine from './hooks/useGameEngine';
@@ -8,8 +9,11 @@ import PageNavigator from './components/PageNavigator';
 import DebugModal from './components/DebugModal';
 import SettingsModal from './components/SettingsModal';
 import { t } from './lib/i18n';
+import { audioManager } from './lib/AudioManager';
 
 type Theme = 'light' | 'dark';
+type MusicTrack = 'ambient_fantasy' | 'ambient_scifi' | 'ambient_horror' | 'ambient_default';
+
 
 const HealthBar: React.FC<{ health: number; max?: number }> = ({ health, max = 10 }) => {
     const numericHealth = typeof health === 'number' && !isNaN(health) ? health : 0;
@@ -39,12 +43,17 @@ const AppHeader: React.FC<{
   theme: Theme;
   onThemeToggle: () => void;
   lang: Language;
-}> = ({ playerState, onOpenStats, onOpenSettings, showStatsButton, pages, currentPage, setCurrentPage, theme, onThemeToggle, lang }) => {
+  isMuted: boolean;
+  onMuteToggle: () => void;
+}> = ({ playerState, onOpenStats, onOpenSettings, showStatsButton, pages, currentPage, setCurrentPage, theme, onThemeToggle, lang, isMuted, onMuteToggle }) => {
   if (!playerState || !showStatsButton) return (
     <header className="flex-shrink-0 border-b border-gray-300 dark:border-gray-700 pb-2 mb-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-700 dark:text-gray-300">{t('appTitle', lang)}</h1>
         <div className="flex items-center gap-2">
+            <button onClick={onMuteToggle} className="px-3 py-1.5 text-xl bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
+              {isMuted ? '🔇' : '🔊'}
+            </button>
             <button onClick={onOpenSettings} className="px-3 py-1.5 text-xl bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
               ⚙️
             </button>
@@ -64,6 +73,9 @@ const AppHeader: React.FC<{
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-700 dark:text-gray-300">{t('appTitle', lang)}</h1>
         <div className="flex items-center gap-2">
+            <button onClick={onMuteToggle} className="px-3 py-2 text-xl bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
+              {isMuted ? '🔇' : '🔊'}
+            </button>
              <button onClick={onOpenSettings} className="px-3 py-2 text-xl bg-gray-200 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
               ⚙️
             </button>
@@ -141,6 +153,7 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
   const [hasSave, setHasSave] = useState(false);
+  const [isMuted, setIsMuted] = useState(audioManager.getMuteState());
   
   const onTypingFinished = useCallback(() => {
     setIsTyping(false);
@@ -164,9 +177,37 @@ const App: React.FC = () => {
       }
   }, [gameState]);
 
+  const getMusicTrackForGenre = (genre: string): MusicTrack => {
+    const lowerGenre = genre.toLowerCase();
+    if (lowerGenre.includes('fantasy')) return 'ambient_fantasy';
+    if (lowerGenre.includes('sci-fi') || lowerGenre.includes('science fiction') || lowerGenre.includes('cyberpunk')) return 'ambient_scifi';
+    if (lowerGenre.includes('horror') || lowerGenre.includes('thriller')) return 'ambient_horror';
+    return 'ambient_default';
+  };
+
+  useEffect(() => {
+    if (gameState === GameState.Playing && gameSetup) {
+        const track = getMusicTrackForGenre(gameSetup.genre);
+        audioManager.playMusic(track);
+    } else if (gameState === GameState.Ended || gameState === GameState.Setup) {
+        audioManager.stopMusic();
+    }
+
+    return () => {
+        if (gameState === GameState.Playing) {
+            audioManager.stopMusic();
+        }
+    };
+  }, [gameState, gameSetup]);
+
 
   const handleThemeToggle = () => {
     setTheme(prevTheme => prevTheme === 'dark' ? 'light' : 'dark');
+  };
+  
+  const handleMuteToggle = () => {
+    const newMuteState = audioManager.toggleMute();
+    setIsMuted(newMuteState);
   };
 
   const handleDownloadLog = useCallback(() => {
@@ -276,6 +317,8 @@ const App: React.FC = () => {
           theme={theme}
           onThemeToggle={handleThemeToggle}
           lang={lang}
+          isMuted={isMuted}
+          onMuteToggle={handleMuteToggle}
         />
         <main className="flex-grow relative overflow-y-auto">
           {renderContent()}

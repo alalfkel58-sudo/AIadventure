@@ -8,11 +8,20 @@ interface TypewriterProps {
 }
 
 const parseText = (text: string) => {
-    // Split by <<...>> and keep the delimiter
-    const parts = text.split(/(<<.*?>>)/g);
+    // Split by <<...>>, [[...]], and {{...}} and keep the delimiters
+    const parts = text.split(/(<<.*?>>|\[\[.*?\]\]|\{\{.*?\}\})/g);
     return parts.map((part, index) => {
         if (part.startsWith('<<') && part.endsWith('>>')) {
+            // Stat changes
             return <em key={index} className="text-green-500 dark:text-green-400 not-italic font-bold">{part.slice(2, -2)}</em>;
+        }
+        if (part.startsWith('[[') && part.endsWith(']]')) {
+            // Shimmering items
+            return <span key={index} className="item-shimmer">{part.slice(2, -2)}</span>;
+        }
+        if (part.startsWith('{{') && part.endsWith('}}')) {
+            // Pulsing interactive elements
+            return <span key={index} className="interactive-pulse">{part.slice(2, -2)}</span>;
         }
         return part;
     });

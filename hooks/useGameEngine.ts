@@ -1,7 +1,9 @@
+
 import { useState, useMemo, useCallback } from 'react';
 import { GameState, PlayerState, Choice, Content, GameSetup, Language } from '../types';
 import { GoogleGenAI, Type } from "@google/genai";
 import { t } from '../lib/i18n';
+import { audioManager } from '../lib/AudioManager';
 
 const getSystemInstruction = (lang: Language, customInstruction?: string): string => {
     const langMap = {
@@ -24,8 +26,10 @@ Game Rules:
 8.  **Primary Stat:** Depending on the genre, maintain a primary player stat called '체력' (Health) for action/adventure genres, or '호감도' (Affection/Favorability) for romance/social genres. This stat should be numeric and typically range from 0 to 10.
 9.  **Utilize Stat/Inventory Checks:** Create situations where the success or failure of an action is determined by the player's stats (e.g., '힘' to lift a heavy object) or a specific inventory item (e.g., a '열쇠' to open a door). The outcome must be described in the dialogue.
 10. **Stat Change Styling:** When a player's stat changes, you MUST enclose the descriptive text in double angle brackets, like <<Your Strength has increased by 1>> or <<체력이 1 증가했습니다>>. This allows the UI to apply a special visual effect. Do not use parentheses for this.
-11. **Skill Checks:** For actions that could succeed or fail, you can create a skill check. Set 'isSkillCheck' to true and provide the 'skill' to use and the 'successChance' percentage (0-100). The game engine will handle the outcome and tell you if it succeeded or failed. Do not describe the outcome of the skill check yourself, only set up the choice for it.
-12. **Player-Initiated Skill Checks:** If the player writes their own action (a custom choice) that implies a chance of success or failure (e.g., "I try to pick the lock," "I attempt to persuade the guard with a 75% chance"), your response MUST be a single choice that formalizes this into a skill check. This choice must have 'isSkillCheck: true', and you should determine an appropriate 'skill' and 'successChance' based on the player's action and stats. Do NOT narrate the outcome of the attempt. The game engine requires the skill check choice to perform the roll.`;
+11. **Item Styling:** When describing an important item that can be picked up, is already in the player's inventory, or is crucial to a puzzle, you MUST enclose its name in double square brackets, like [[Ancient Key]] or [[낡은 열쇠]]. This applies a special visual effect.
+12. **Interactive Element Styling:** When describing an element in the scene that the player can directly interact with (e.g., a lever, a button, a strange symbol), you MUST enclose it in double curly braces, like {{glowing lever}} or {{빛나는 레버}}. This also applies a special visual effect.
+13. **Skill Checks:** For actions that could succeed or fail, you can create a skill check. Set 'isSkillCheck' to true and provide the 'skill' to use and the 'successChance' percentage (0-100). The game engine will handle the outcome and tell you if it succeeded or failed. Do not describe the outcome of the skill check yourself, only set up the choice for it.
+14. **Player-Initiated Skill Checks:** If the player writes their own action (a custom choice) that implies a chance of success or failure (e.g., "I try to pick the lock," "I attempt to persuade the guard with a 75% chance"), your response MUST be a single choice that formalizes this into a skill check. This choice must have 'isSkillCheck: true', and you should determine an appropriate 'skill' and 'successChance' based on the player's action and stats. Do NOT narrate the outcome of the attempt. The game engine requires the skill check choice to perform the roll.`;
     
     let finalInstruction = baseInstruction;
     if (customInstruction) {
@@ -144,6 +148,17 @@ const useGameEngine = () => {
       setLastRequest(null); // Clear last request on success
       const responseJson = JSON.parse(responseText);
       const { dialogue, playerState: aiPlayerState, choices, isEnding } = responseJson;
+
+      if (playerState) { // Only check for item pickups during active play
+        const oldInventory = playerState.inventory || [];
+        const newInventory = aiPlayerState.inventory || [];
+        if (newInventory.length > oldInventory.length) {
+            const newItemAdded = newInventory.some(item => !oldInventory.includes(item));
+            if (newItemAdded) {
+                audioManager.playSound('item_pickup');
+            }
+        }
+      }
       
       const convertedStats: Record<string, string | number> = {};
       if (Array.isArray(aiPlayerState.stats)) {
@@ -345,6 +360,7 @@ Generate the very first scene of the story in the designated language. The playe
   
   const handleChoice = useCallback(async (choice: Choice) => {
     if (isTyping || !ai || isNavigating) return;
+    audioManager.playSound('choice');
     setIsTyping(false);
     
     if (choice.text === "Retry" && lastRequest) {
@@ -357,6 +373,11 @@ Generate the very first scene of the story in the designated language. The playe
     if (choice.isSkillCheck && choice.successChance !== undefined) {
         const roll = Math.floor(Math.random() * 100) + 1; // 1-100
         const success = roll <= choice.successChance;
+        if (success) {
+          audioManager.playSound('success');
+        } else {
+          audioManager.playSound('failure');
+        }
         const outcome = success ? t('succeeded', lang) : t('failed', lang);
         const skill = choice.skill || t('unspecifiedSkill', lang);
         const statValue = playerState?.stats[skill] ?? t('n/a', lang);
