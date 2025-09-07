@@ -93,7 +93,7 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ onStart, hasSave, onLoadGame,
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-center p-4 animate-fade-in overflow-y-auto">
+    <div className="w-full flex flex-col items-center p-4 animate-fade-in">
       <div className="text-center w-full max-w-sm flex-shrink-0">
         <h1 className="text-4xl font-bold mb-2 text-gray-800 dark:text-gray-200">{t('startStory', lang)}</h1>
         <p className="text-md text-gray-600 dark:text-gray-500 mb-8">{t('setupIntro', lang)}</p>

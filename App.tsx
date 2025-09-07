@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameState, PlayerState, Content, Language } from './types';
 import useGameEngine from './hooks/useGameEngine';
@@ -321,7 +322,7 @@ const App: React.FC = () => {
           isMuted={isMuted}
           onMuteToggle={handleMuteToggle}
         />
-        <main className="flex-grow relative overflow-y-auto">
+        <main className="flex-grow relative overflow-y-scroll">
           {renderContent()}
         </main>
       </div>
