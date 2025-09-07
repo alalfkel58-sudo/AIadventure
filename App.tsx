@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameState, PlayerState, Content, Language } from './types';
 import useGameEngine from './hooks/useGameEngine';
@@ -304,7 +305,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-md aspect-[9/16] mx-auto flex flex-col bg-white dark:bg-black shadow-2xl rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div className="w-full h-full md:max-w-4xl lg:max-w-6xl md:h-[95vh] md:my-4 flex flex-col bg-white dark:bg-black shadow-2xl md:rounded-lg border border-transparent md:border-gray-200 dark:md:border-gray-800 overflow-hidden">
       <div className="p-4 flex flex-col h-full">
         <AppHeader 
           playerState={playerState} 

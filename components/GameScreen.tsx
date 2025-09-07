@@ -27,7 +27,7 @@ const CustomChoiceInput: React.FC<{ onSend: (text: string) => void; onCancel: ()
     };
 
     return (
-        <div className="w-full flex flex-col gap-2 animate-fade-in">
+        <div className="w-full flex flex-col gap-2 animate-fade-in md:col-span-2">
             <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
@@ -121,7 +121,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
                 {t('generatingStory', lang)}
             </div>
         ) : showChoices ? (
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {isWritingCustom ? (
                 <CustomChoiceInput 
                     onSend={handleSendCustomChoice}
@@ -135,7 +135,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
                     ))}
                     <button
                         onClick={() => setIsWritingCustom(true)}
-                        className="w-full text-center p-4 bg-gray-200 dark:bg-gray-800 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 hover:border-gray-800 dark:hover:border-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 text-gray-600 dark:text-gray-400"
+                        className="w-full text-center p-4 bg-gray-200 dark:bg-gray-800 border border-dashed border-gray-400 dark:border-gray-600 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 hover:border-gray-800 dark:hover:border-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 text-gray-600 dark:text-gray-400 md:col-span-2"
                     >
                         {t('writeChoice', lang)}
                     </button>
