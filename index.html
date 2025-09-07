@@ -11,16 +11,16 @@
       :root {
         --background-color-light: #f5f5f5;
         --text-color-light: #111111;
-        --primary-color-light: #333333;
+        --primary-color-light: #000000;
         --secondary-color-light: #cccccc;
         --card-bg-light: #ffffff;
         --input-bg-light: #eeeeee;
         --border-color-light: #dddddd;
-        --button-text-color-light: #f5f5f5;
+        --button-text-color-light: #ffffff;
 
         --background-color-dark: #121212;
         --text-color-dark: #e0e0e0;
-        --primary-color-dark: #bbbbbb;
+        --primary-color-dark: #ffffff;
         --secondary-color-dark: #444444;
         --card-bg-dark: #1e1e1e;
         --input-bg-dark: #2a2a2a;
@@ -55,6 +55,10 @@
         margin: 0;
         padding: 0;
       }
+      
+      html, body {
+        height: 100%;
+      }
 
       body {
         font-family: 'Noto Sans KR', sans-serif;
@@ -64,7 +68,6 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        min-height: 100vh;
         padding: 1rem;
       }
 
@@ -80,6 +83,12 @@
         flex-direction: column;
         border: 1px solid var(--border-color);
       }
+      
+      #app-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
 
       button {
         font-family: 'Noto Sans KR', sans-serif;
@@ -94,17 +103,18 @@
         transition: background-color 0.2s, transform 0.2s;
         outline: none;
       }
-
-      button:hover {
+      
+      button:not([disabled]):hover {
         opacity: 0.85;
         transform: translateY(-2px);
       }
       
       button:disabled {
-        background-color: #6c757d;
+        background-color: var(--secondary-color);
+        color: #888;
         cursor: not-allowed;
         transform: none;
-        opacity: 0.5;
+        opacity: 0.7;
       }
 
       input, textarea {
@@ -164,7 +174,7 @@
       .setup-screen small {
         display: block;
         margin: -0.75rem 0 1rem 0;
-        color: var(--secondary-color);
+        opacity: 0.8;
         font-size: 0.8rem;
       }
 
@@ -186,6 +196,32 @@
         box-shadow: 0 0 0 3px var(--secondary-color);
         color: var(--button-text-color);
       }
+      
+      .api-key-note {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        text-align: center;
+        opacity: 0.9;
+      }
+      
+      .error-message {
+        padding: 1rem;
+        margin-top: 1rem;
+        background-color: #ff4d4d20;
+        border: 1px solid #ff4d4d;
+        color: #ff4d4d;
+        border-radius: 8px;
+        text-align: center;
+        width: 100%;
+      }
+      
+      .in-game-error {
+        margin: 0 1.5rem 1rem 1.5rem;
+      }
 
       .game-screen {
         padding: 0;
@@ -193,6 +229,7 @@
         display: flex;
         flex-direction: column;
         flex-grow: 1;
+        overflow: hidden; /* Prevent double scrollbars */
       }
       
       .game-header {
@@ -241,6 +278,7 @@
         flex-shrink: 0;
         position: relative;
         z-index: 10;
+        min-height: 110px;
       }
       
       .choices {
@@ -261,6 +299,9 @@
       .loading-text {
         color: var(--primary-color);
         animation: pulse 1.5s infinite;
+        text-align: center;
+        width: 100%;
+        padding-top: 2rem;
       }
       
       @keyframes pulse {
@@ -268,39 +309,24 @@
         50% { opacity: 0.5; }
       }
 
-      .typewriter-text .stat-change {
-        color: #48bb78;
-        font-weight: bold;
-        animation: glow-green 1.5s ease-in-out;
-      }
-      
-      .typewriter-text .item {
-        color: #63b3ed;
-        font-weight: bold;
-        animation: glow-blue 1.5s ease-in-out;
-        position: relative;
+      .typewriter-text .stat-change { color: #48bb78; font-weight: bold; }
+      .typewriter-text .item { color: #63b3ed; font-weight: bold; }
+      .typewriter-text .interactable { color: #f6ad55; font-weight: bold; cursor: pointer; }
+
+      .pagination {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1.5rem;
+        border-top: 1px solid var(--border-color);
+        background-color: var(--input-bg);
+        flex-shrink: 0;
       }
 
-      .typewriter-text .interactable {
-        color: #f6ad55;
+      .pagination button {
+        background: none;
+        color: var(--primary-color);
         font-weight: bold;
-        cursor: pointer;
-        animation: pulse-orange 2s infinite ease-in-out;
-      }
-      
-      @keyframes glow-green {
-        0%, 100% { text-shadow: 0 0 2px #48bb78; }
-        50% { text-shadow: 0 0 8px #48bb78; }
-      }
-      
-      @keyframes glow-blue {
-        0%, 100% { text-shadow: 0 0 2px #63b3ed; }
-        50% { text-shadow: 0 0 8px #63b3ed; }
-      }
-
-      @keyframes pulse-orange {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
       }
 
       /* MODAL STYLES */
@@ -401,6 +427,6 @@
 </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

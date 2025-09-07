@@ -5,8 +5,7 @@ import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 type GameState = 'welcome' | 'setup' | 'playing' | 'ended';
 type Theme = 'light' | 'dark';
 type Language = 'ko' | 'en' | 'ja';
-// FIX: Removed 'gemini-2.5-pro' as it is not in the list of recommended models.
-type Model = 'gemini-2.5-flash';
+type Model = 'gemini-2.5-flash' | 'gemini-1.5-pro';
 type Item = { name: string; description: string };
 type PlayerStatus = {
   health: number;
@@ -17,7 +16,6 @@ type PlayerStatus = {
 type Choice = { text: string; requires?: string | null };
 type NPC = { name: string; description: string };
 type GameData = {
-  // FIX: Removed apiKey from GameData to adhere to security guidelines (use process.env.API_KEY exclusively).
   model: Model;
   genre: string;
   persona: string;
@@ -26,6 +24,7 @@ type GameData = {
   npcs: NPC[];
   playerStatus: PlayerStatus;
   history: { role: 'user' | 'model', parts: { text: string }[] }[];
+  scenes: string[]; // Added to store scene descriptions for pagination
 };
 type AiResponse = {
     scene_description: string;
@@ -43,12 +42,9 @@ const translations = {
     lastSave: "마지막 저장 위치에서 이어하기",
     newAdventure: "새로운 모험 시작",
     createYourWorld: "나만의 세계 창조하기",
-    apiKeyLabel: "Gemini API 키",
-    apiKeyPlaceholder: "컴맹인 당신을 위해... 여기에 키를 입력하세요",
-    apiKeyDesc: "이것은 당신의 개인 프로젝트입니다. 당신의 Gemini API 키를 여기에 입력해주세요. 이 정보는 어디에도 저장되거나 전송되지 않습니다.",
-    modelSelectLabel: "AI 모델 선택",
+    modelSelectLabel: "AI 모델",
     modelFlash: "⚡️ Gemini 2.5 Flash",
-    modelPro: "✨ Gemini 2.5 Pro",
+    modelPro: "✨ Gemini 1.5 Pro",
     modelFlashDesc: "빠르고 경제적인 모델",
     modelProDesc: "더 창의적이고 강력한 모델",
     genreLabel: "이야기 장르",
@@ -88,6 +84,13 @@ const translations = {
     saveGame: "게임 저장하기",
     saveGameSuccess: "게임이 저장되었습니다!",
     close: "닫기",
+    prevPage: "이전",
+    nextPage: "다음",
+    pageIndicator: (current: number, total: number) => `페이지 ${current} / ${total}`,
+    apiKeyError: "Gemini API 키가 설정되지 않았습니다. 앱이 작동하려면 유효한 키를 입력해야 합니다.",
+    genericError: "오류가 발생했습니다. 키가 유효한지 확인하고 다시 시도해주세요.",
+    apiKeyPrompt: "시작하려면 Gemini API 키를 입력하세요.",
+    saveKey: "키 저장",
   },
   en: {
     title: "AI Adventure",
@@ -96,12 +99,9 @@ const translations = {
     lastSave: "Continue from last save",
     newAdventure: "Start New Adventure",
     createYourWorld: "Create Your Own World",
-    apiKeyLabel: "Gemini API Key",
-    apiKeyPlaceholder: "For you, the computer illiterate... enter your key here",
-    apiKeyDesc: "This is your personal project. Please enter your Gemini API key here. This information is not stored or transmitted anywhere.",
-    modelSelectLabel: "Select AI Model",
+    modelSelectLabel: "AI Model",
     modelFlash: "⚡️ Gemini 2.5 Flash",
-    modelPro: "✨ Gemini 2.5 Pro",
+    modelPro: "✨ Gemini 1.5 Pro",
     modelFlashDesc: "Fast and economical model",
     modelProDesc: "More creative and powerful model",
     genreLabel: "Story Genre",
@@ -141,6 +141,13 @@ const translations = {
     saveGame: "Save Game",
     saveGameSuccess: "Game saved!",
     close: "Close",
+    prevPage: "Previous",
+    nextPage: "Next",
+    pageIndicator: (current: number, total: number) => `Page ${current} of ${total}`,
+    apiKeyError: "Gemini API Key is not set. You must enter a valid key for the app to function.",
+    genericError: "An error occurred. Please check if your key is valid and try again.",
+    apiKeyPrompt: "Enter your Gemini API Key to begin.",
+    saveKey: "Save Key",
   },
   ja: {
     title: "AIアドベンチャー",
@@ -149,14 +156,11 @@ const translations = {
     lastSave: "最後のセーブから続ける",
     newAdventure: "新しい冒険を始める",
     createYourWorld: "自分だけの世界を創造する",
-    apiKeyLabel: "Gemini APIキー",
-    apiKeyPlaceholder: "コンピュータ音痴のあなたへ... ここにキーを入力してください",
-    apiKeyDesc: "これはあなたの個人プロジェクトです。ここにあなたのGemini APIキーを入力してください。この情報はどこにも保存・送信されません。",
-    modelSelectLabel: "AIモデルを選択",
+    modelSelectLabel: "AIモデル",
     modelFlash: "⚡️ Gemini 2.5 Flash",
-    modelPro: "✨ Gemini 2.5 Pro",
-    modelFlashDesc: "高速で経済的なモデル",
+    modelPro: "✨ Gemini 1.5 Pro",
     modelProDesc: "より創造的で強力なモデル",
+    modelFlashDesc: "高速で経済的なモデル",
     genreLabel: "物語のジャンル",
     genrePlaceholder: "中世ファンタジー、学園もの、サイバーパンクなど",
     personaLabel: "プレイヤー設定（ペルソナ）",
@@ -194,12 +198,20 @@ const translations = {
     saveGame: "ゲームを保存",
     saveGameSuccess: "ゲームが保存されました！",
     close: "閉じる",
+    prevPage: "前へ",
+    nextPage: "次へ",
+    pageIndicator: (current: number, total: number) => `ページ ${current} / ${total}`,
+    apiKeyError: "Gemini APIキーが設定されていません。アプリが機能するためには有効なキーを入力する必要があります。",
+    genericError: "エラーが発生しました。キーが有効か確認してからもう一度お試しください。",
+    apiKeyPrompt: "開始するには、Gemini APIキーを入力してください。",
+    saveKey: "キーを保存",
   }
 };
 
 // --- HELPER FUNCTIONS ---
 const SAVE_KEY = 'ai-adventure-savegame';
 const LANG_KEY = 'ai-adventure-language';
+const API_KEY_SESSION_KEY = 'gemini-api-key';
 
 const saveGame = (data: GameData) => {
   try {
@@ -226,20 +238,15 @@ const handleDownloadLog = (gameData: GameData | null) => {
     if (!gameData) return;
 
     let logContent = `AI Adventure Log\n\n`;
+    logContent += `Model: ${gameData.model}\n`;
     logContent += `Genre: ${gameData.genre}\n`;
     logContent += `Persona: ${gameData.persona}\n`;
     logContent += `World: ${gameData.world}\n\n`;
     logContent += `--- STORY START ---\n\n`;
 
-    gameData.history.forEach(turn => {
-        if (turn.role === 'model') {
-            try {
-                const response: AiResponse = JSON.parse(turn.parts[0].text);
-                logContent += `[SCENE]\n${response.scene_description}\n\n`;
-            } catch (e) { /* ignore parse error for log */ }
-        } else {
-            logContent += `[ACTION]\n> ${turn.parts[0].text}\n\n`;
-        }
+    gameData.scenes.forEach((scene, index) => {
+        logContent += `--- PAGE ${index + 1} ---\n\n`;
+        logContent += `${scene}\n\n`;
     });
 
     const blob = new Blob([logContent], { type: 'text/plain;charset=utf-8' });
@@ -253,9 +260,7 @@ const handleDownloadLog = (gameData: GameData | null) => {
     URL.revokeObjectURL(url);
 };
 
-
-const emptyGameData: Omit<GameData, 'history' | 'playerStatus'> = {
-  // FIX: Removed apiKey to use environment variables exclusively.
+const emptyGameData: Omit<GameData, 'history' | 'playerStatus' | 'scenes'> = {
   model: 'gemini-2.5-flash',
   genre: '',
   persona: '',
@@ -266,21 +271,19 @@ const emptyGameData: Omit<GameData, 'history' | 'playerStatus'> = {
 
 // --- MAIN APP COMPONENT ---
 export default function App() {
+  const [apiKey, setApiKey] = useState<string | null>(() => sessionStorage.getItem(API_KEY_SESSION_KEY));
   const [gameState, setGameState] = useState<GameState>('welcome');
   const [gameData, setGameData] = useState<GameData | null>(null);
   const [hasSave, setHasSave] = useState(false);
   const [theme, setTheme] = useState<Theme>('dark');
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem(LANG_KEY) as Language) || 'ko');
   const [isLoading, setIsLoading] = useState(false);
-  const [currentScene, setCurrentScene] = useState<string>('');
-  const [choices, setChoices] = useState<Choice[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
-  // FIX: Changed `...args` type to `any[]` to fix spread operator error on non-tuple types.
   const t = useCallback((key: keyof (typeof translations)['ko'], ...args: any[]) => {
     const str = translations[language][key] || key;
     if (typeof str === 'function') {
-      // FIX: Use `apply` to call the function with the `args` array. This resolves the
-      // TypeScript error about spreading a non-tuple array into function arguments.
       return str.apply(null, args);
     }
     return str;
@@ -301,30 +304,33 @@ export default function App() {
     }
   }, []);
 
+  const handleKeySubmit = (key: string) => {
+    sessionStorage.setItem(API_KEY_SESSION_KEY, key);
+    setApiKey(key);
+    setError(null);
+  };
+
   const handleNewGame = () => {
     setGameState('setup');
+    setGameData(null);
+    setError(null);
   };
 
   const handleContinueGame = () => {
     const savedGame = loadGame();
     if (savedGame) {
       setGameData(savedGame);
-      const lastModelMessage = savedGame.history.filter(h => h.role === 'model').pop();
-      try {
-        const lastResponse: AiResponse = JSON.parse(lastModelMessage?.parts[0].text ?? '{}');
-        setCurrentScene(lastResponse.scene_description || "Continuing adventure...");
-        setChoices(lastResponse.choices || []);
-      } catch (e) {
-        setCurrentScene("Error loading saved game. Generating a new scene...");
-      }
+      setCurrentPage(savedGame.scenes.length - 1);
       setGameState('playing');
+      setError(null);
     }
   };
 
-  const handleStartAdventure = async (setupData: Omit<GameData, 'history' | 'playerStatus'>) => {
+  const handleStartAdventure = async (setupData: Omit<GameData, 'history' | 'playerStatus' | 'scenes'>) => {
     setIsLoading(true);
+    setError(null);
     const initialPlayerStatus: PlayerStatus = { health: 100, time: "Day 1, Morning", location: "Unknown Place", inventory: [] };
-    const fullGameData: GameData = { ...setupData, playerStatus: initialPlayerStatus, history: [] };
+    const fullGameData: GameData = { ...setupData, playerStatus: initialPlayerStatus, history: [], scenes: [] };
 
     const prompt = `
       You are an AI storyteller for an interactive text adventure game.
@@ -346,21 +352,20 @@ export default function App() {
     try {
       const response = await callGeminiAPI(prompt, fullGameData);
       updateGameFromAiResponse(response, fullGameData);
-    } catch (error) {
-      console.error(error);
-      setCurrentScene(`Failed to start the story. Error: ${error instanceof Error ? error.message : String(error)}`);
+      setGameState('playing');
+    } catch (err) {
+      console.error(err);
+      setError(t('genericError'));
     } finally {
       setIsLoading(false);
-      setGameState('playing');
     }
   };
   
   const handlePlayerChoice = async (choiceText: string) => {
     if (!gameData) return;
     setIsLoading(true);
-    setCurrentScene('');
-    setChoices([]);
-
+    setError(null);
+    
     const prompt = `The player chose the following action: "${choiceText}". Describe the result of this action, and present the next situation and choices. Continue the story based on the previous context.`;
     
     const updatedHistory = gameData.history.concat([{ role: 'user' as const, parts: [{ text: prompt }] }]);
@@ -370,27 +375,28 @@ export default function App() {
     try {
         const response = await callGeminiAPI(prompt, updatedGameData);
         updateGameFromAiResponse(response, updatedGameData);
-    } catch (error) {
-        console.error(error);
-        setCurrentScene(`Failed to proceed. Error: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (err) {
+        console.error(err);
+        setError(t('genericError'));
     } finally {
         setIsLoading(false);
     }
   };
   
   const updateGameFromAiResponse = (response: AiResponse, currentGameData: GameData) => {
-      setCurrentScene(response.scene_description);
-      setChoices(response.choices);
-      
+      const updatedScenes = [...currentGameData.scenes, response.scene_description];
+      setCurrentPage(updatedScenes.length - 1);
+
       const updatedPlayerStatus = {
         ...response.player_status,
-        inventory: response.player_status.inventory || [], // Ensure inventory is always an array
+        inventory: response.player_status.inventory || [],
       };
 
       const updatedGameData = {
           ...currentGameData,
           playerStatus: updatedPlayerStatus,
           history: currentGameData.history.concat([{ role: 'model' as const, parts: [{ text: JSON.stringify(response) }] }]),
+          scenes: updatedScenes,
       };
 
       setGameData(updatedGameData);
@@ -402,12 +408,10 @@ export default function App() {
   };
 
   const callGeminiAPI = async (prompt: string, currentGameData: GameData): Promise<AiResponse> => {
-      // FIX: Adhere to guidelines by using API_KEY from environment variables exclusively.
-      const apiKey = process.env.API_KEY;
       if (!apiKey) {
-          throw new Error("API_KEY environment variable not set.");
+          throw new Error("API key is not set.");
       }
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       
       const systemInstruction = `
         You are an interactive fiction storyteller. Your role is to create an engaging text-based adventure.
@@ -427,54 +431,52 @@ export default function App() {
         }
         When a player acquires an item, add it to the inventory.
       `;
-
-      const responseSchema = {
-          type: Type.OBJECT,
-          properties: {
-              scene_description: { type: Type.STRING },
-              player_status: {
-                  type: Type.OBJECT,
-                  properties: {
-                      health: { type: Type.NUMBER },
-                      time: { type: Type.STRING },
-                      location: { type: Type.STRING },
-                      inventory: {
-                        type: Type.ARRAY,
-                        items: {
-                          type: Type.OBJECT,
-                          properties: {
-                            name: { type: Type.STRING },
-                            description: { type: Type.STRING }
-                          },
-                          required: ['name', 'description']
-                        }
-                      }
-                  },
-                  required: ['health', 'time', 'location', 'inventory']
-              },
-              choices: {
-                  type: Type.ARRAY,
-                  items: {
-                      type: Type.OBJECT,
-                      properties: {
-                          text: { type: Type.STRING },
-                          requires: { type: Type.STRING, nullable: true },
-                      },
-                      required: ['text']
-                  }
-              },
-              is_ending: { type: Type.BOOLEAN }
-          },
-          required: ['scene_description', 'player_status', 'choices', 'is_ending']
-      };
-
+      
       const result: GenerateContentResponse = await ai.models.generateContent({
         model: currentGameData.model,
         contents: currentGameData.history,
         config: {
           systemInstruction: systemInstruction,
           responseMimeType: "application/json",
-          responseSchema: responseSchema,
+          responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                  scene_description: { type: Type.STRING },
+                  player_status: {
+                      type: Type.OBJECT,
+                      properties: {
+                          health: { type: Type.NUMBER },
+                          time: { type: Type.STRING },
+                          location: { type: Type.STRING },
+                          inventory: {
+                            type: Type.ARRAY,
+                            items: {
+                              type: Type.OBJECT,
+                              properties: {
+                                name: { type: Type.STRING },
+                                description: { type: Type.STRING }
+                              },
+                              required: ['name', 'description']
+                            }
+                          }
+                      },
+                      required: ['health', 'time', 'location', 'inventory']
+                  },
+                  choices: {
+                      type: Type.ARRAY,
+                      items: {
+                          type: Type.OBJECT,
+                          properties: {
+                              text: { type: Type.STRING },
+                              requires: { type: Type.STRING },
+                          },
+                          required: ['text']
+                      }
+                  },
+                  is_ending: { type: Type.BOOLEAN }
+              },
+              required: ['scene_description', 'player_status', 'choices', 'is_ending']
+          },
         },
       });
 
@@ -483,15 +485,17 @@ export default function App() {
   };
 
   const renderContent = () => {
+    if (!apiKey) {
+      return <ApiKeyScreen onKeySubmit={handleKeySubmit} t={t} />;
+    }
     switch (gameState) {
       case 'setup':
-        return <SetupScreen onStart={handleStartAdventure} t={t} />;
+        return <SetupScreen onStart={handleStartAdventure} t={t} isLoading={isLoading} error={error} />;
       case 'playing':
         return (
           <GameScreen
             gameData={gameData}
-            currentScene={currentScene}
-            choices={choices}
+            choices={gameData?.history.filter(h => h.role === 'model').map(h => JSON.parse(h.parts[0].text).choices).pop() || []}
             isLoading={isLoading}
             onChoice={handlePlayerChoice}
             theme={theme}
@@ -499,13 +503,16 @@ export default function App() {
             t={t}
             onSaveRequest={() => gameData && saveGame(gameData)}
             onDownloadRequest={() => handleDownloadLog(gameData)}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            error={error}
           />
         );
       case 'ended':
         return (
             <div className="screen">
                 <h1>{t('theEnd')}</h1>
-                <p>{currentScene || t('storyEnded')}</p>
+                <p>{gameData?.scenes[gameData.scenes.length - 1] || t('storyEnded')}</p>
                 <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
                     <button onClick={() => handleDownloadLog(gameData)}>{t('downloadLog')}</button>
                     <button onClick={handleNewGame}>{t('startNewAdventure')}</button>
@@ -521,6 +528,7 @@ export default function App() {
             hasSave={hasSave}
             setLanguage={setLanguage}
             t={t}
+            error={error}
           />
         );
     }
@@ -531,10 +539,40 @@ export default function App() {
 
 // --- SUB-COMPONENTS ---
 
-const WelcomeScreen = ({ onNewGame, onContinue, hasSave, setLanguage, t }: { onNewGame: () => void; onContinue: () => void; hasSave: boolean; setLanguage: (lang: Language) => void; t: (key: keyof (typeof translations)['ko'], ...args: (string | number)[]) => string; }) => (
+const ApiKeyScreen = ({ onKeySubmit, t }: { onKeySubmit: (key: string) => void; t: (key: keyof (typeof translations)['ko']) => string; }) => {
+  const [key, setKey] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (key.trim()) {
+      onKeySubmit(key.trim());
+    }
+  };
+
+  return (
+    <div className="screen" style={{ justifyContent: 'center', gap: '1.5rem' }}>
+      <h1 style={{ fontSize: '2rem', fontFamily: 'serif', color: 'var(--primary-color)' }}>{t('title')}</h1>
+      <p>{t('apiKeyPrompt')}</p>
+      <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '400px', marginTop: '1rem' }}>
+        <input
+          type="password"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="Enter your API Key here"
+          style={{ marginBottom: '1rem' }}
+        />
+        <button type="submit" disabled={!key.trim()} style={{ width: '100%' }}>{t('saveKey')}</button>
+      </form>
+    </div>
+  );
+};
+
+
+const WelcomeScreen = ({ onNewGame, onContinue, hasSave, setLanguage, t, error }: { onNewGame: () => void; onContinue: () => void; hasSave: boolean; setLanguage: (lang: Language) => void; t: (key: keyof (typeof translations)['ko'], ...args: (string | number)[]) => string; error: string | null; }) => (
   <div className="screen" style={{ justifyContent: 'center', gap: '1.5rem' }}>
     <h1 style={{ fontSize: '3rem', fontFamily: 'serif', color: 'var(--primary-color)' }}>{t('title')}</h1>
     <p style={{ whiteSpace: 'pre-line' }}>{t('tagline')}</p>
+    {error && <p className="error-message">{error}</p>}
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '2rem', width: '250px' }}>
       {hasSave && (
         <button onClick={onContinue} style={{ order: 1 }}>
@@ -552,7 +590,7 @@ const WelcomeScreen = ({ onNewGame, onContinue, hasSave, setLanguage, t }: { onN
   </div>
 );
 
-const SetupScreen = ({ onStart, t }: { onStart: (data: Omit<GameData, 'history' | 'playerStatus'>) => void; t: (key: keyof (typeof translations)['ko'], ...args: (string | number)[]) => string; }) => {
+const SetupScreen = ({ onStart, t, isLoading, error }: { onStart: (data: Omit<GameData, 'history' | 'playerStatus' | 'scenes'>) => void; t: (key: keyof (typeof translations)['ko'], ...args: (string | number)[]) => string; isLoading: boolean, error: string | null }) => {
   const [data, setData] = useState(emptyGameData);
   const [numNpcs, setNumNpcs] = useState(1);
 
@@ -579,21 +617,23 @@ const SetupScreen = ({ onStart, t }: { onStart: (data: Omit<GameData, 'history' 
   };
   
   const canStart = useMemo(() => {
-    return data.genre && data.persona && data.world && data.intro && data.npcs.every(n => n.name && n.description);
-  }, [data]);
+    return !isLoading && data.genre && data.persona && data.world && data.intro && data.npcs.every(n => n.name && n.description);
+  }, [data, isLoading]);
 
   return (
     <form className="setup-screen" onSubmit={handleSubmit}>
       <h2>{t('createYourWorld')}</h2>
-      
-      {/* FIX: Removed API Key input field to comply with guidelines. */}
-      
+
       <label>{t('modelSelectLabel')}</label>
       <div className="model-selection">
-          {/* FIX: Removed gemini-2.5-pro and simplified model selection. */}
-          <button type="button" onClick={() => setData({...data, model: 'gemini-2.5-flash'})} className={'selected'}>{t('modelFlash')}</button>
+          <button type="button" onClick={() => setData({ ...data, model: 'gemini-2.5-flash' })} className={data.model === 'gemini-2.5-flash' ? 'selected' : ''}>
+              {t('modelFlash')}
+          </button>
+          <button type="button" onClick={() => setData({ ...data, model: 'gemini-1.5-pro' })} className={data.model === 'gemini-1.5-pro' ? 'selected' : ''}>
+              {t('modelPro')}
+          </button>
       </div>
-      <small style={{textAlign: 'center'}}>{t('modelFlashDesc')}</small>
+      <small style={{textAlign: 'center'}}>{data.model === 'gemini-2.5-flash' ? t('modelFlashDesc') : t('modelProDesc')}</small>
       
       <label htmlFor="genre">{t('genreLabel')}</label>
       <input id="genre" name="genre" value={data.genre} onChange={handleChange} placeholder={t('genrePlaceholder')} />
@@ -622,16 +662,16 @@ const SetupScreen = ({ onStart, t }: { onStart: (data: Omit<GameData, 'history' 
         </div>
       ))}
       
+      {error && <p className="error-message">{error}</p>}
+
       <button type="submit" disabled={!canStart} style={{ width: '100%', marginTop: '1rem', padding: '1rem', fontSize: '1.2rem' }}>
-        {t('startAdventure')}
+        {isLoading ? t('storyLoading') : t('startAdventure')}
       </button>
     </form>
   );
 };
 
-// FIX: Corrected the type of `onFinished` to `() => void` to match its zero-argument
-// invocation, resolving the "Expected 1 arguments, but got 0" error.
-const Typewriter = ({ text, onFinished }: { text: string, onFinished?: () => void }) => {
+const Typewriter = ({ text, onFinished, instant = false }: { text: string, onFinished?: () => void, instant?: boolean }) => {
   const [displayedText, setDisplayedText] = useState('');
   const intervalIdRef = useRef<number | undefined>();
 
@@ -643,17 +683,20 @@ const Typewriter = ({ text, onFinished }: { text: string, onFinished?: () => voi
   }, []);
 
   useEffect(() => {
-    if (intervalIdRef.current) {
-      clearInterval(intervalIdRef.current);
+    if (intervalIdRef.current) clearInterval(intervalIdRef.current);
+    
+    if (instant || !text) {
+        setDisplayedText(text || '');
+        if(onFinished) onFinished();
+        return;
     }
+    
     setDisplayedText('');
-    if (!text) return;
-
     let i = 0;
     const typingSpeed = 25;
     intervalIdRef.current = window.setInterval(() => {
       if (i < text.length) {
-        setDisplayedText(text.slice(0, i + 1));
+        setDisplayedText(prev => text.slice(0, prev.length + 1));
         i++;
       } else {
         clearInterval(intervalIdRef.current);
@@ -663,11 +706,9 @@ const Typewriter = ({ text, onFinished }: { text: string, onFinished?: () => voi
     }, typingSpeed);
 
     return () => {
-      if (intervalIdRef.current) {
-        clearInterval(intervalIdRef.current);
-      }
+      if (intervalIdRef.current) clearInterval(intervalIdRef.current);
     };
-  }, [text, onFinished]);
+  }, [text, onFinished, instant]);
   
   const handleClick = () => {
     if (intervalIdRef.current) {
@@ -681,10 +722,13 @@ const Typewriter = ({ text, onFinished }: { text: string, onFinished?: () => voi
   return <div className="typewriter-text" onClick={handleClick} dangerouslySetInnerHTML={{ __html: parseText(displayedText) }} />;
 };
 
-const GameScreen = ({ gameData, currentScene, choices, isLoading, onChoice, theme, setTheme, t, onSaveRequest, onDownloadRequest }: { gameData: GameData | null; currentScene: string; choices: Choice[]; isLoading: boolean; onChoice: (choice: string) => void; theme: Theme; setTheme: (theme: Theme) => void; t: (key: keyof (typeof translations)['ko'], ...args: (string | number)[]) => string; onSaveRequest: () => boolean | void; onDownloadRequest: () => void; }) => {
+const GameScreen = ({ gameData, choices, isLoading, onChoice, theme, setTheme, t, onSaveRequest, onDownloadRequest, currentPage, setCurrentPage, error }: { gameData: GameData | null; choices: Choice[]; isLoading: boolean; onChoice: (choice: string) => void; theme: Theme; setTheme: (theme: Theme) => void; t: (key: keyof (typeof translations)['ko'], ...args: (string | number)[]) => string; onSaveRequest: () => boolean | void; onDownloadRequest: () => void; currentPage: number; setCurrentPage: (page: number) => void; error: string | null; }) => {
   const [showDirectInput, setShowDirectInput] = useState(false);
   const [directInputValue, setDirectInputValue] = useState('');
   const [activeModal, setActiveModal] = useState<'status' | 'settings' | null>(null);
+  
+  const scenes = gameData?.scenes || [];
+  const isLastPage = currentPage === scenes.length - 1;
 
   const handleDirectSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -697,21 +741,8 @@ const GameScreen = ({ gameData, currentScene, choices, isLoading, onChoice, them
 
   return (
     <div className="game-screen">
-      {activeModal === 'status' && gameData?.playerStatus && (
-        <StatusModal 
-          playerStatus={gameData.playerStatus} 
-          onClose={() => setActiveModal(null)} 
-          t={t} 
-        />
-      )}
-      {activeModal === 'settings' && (
-        <SettingsModal 
-          onClose={() => setActiveModal(null)} 
-          onSave={onSaveRequest}
-          onDownload={onDownloadRequest}
-          t={t}
-        />
-      )}
+      {activeModal === 'status' && gameData?.playerStatus && <StatusModal playerStatus={gameData.playerStatus} onClose={() => setActiveModal(null)} t={t} />}
+      {activeModal === 'settings' && <SettingsModal onClose={() => setActiveModal(null)} onSave={onSaveRequest} onDownload={onDownloadRequest} t={t} />}
       <header className="game-header">
         <div className="status-bar">
           <span>❤️ {gameData?.playerStatus.health || 100}</span>
@@ -727,33 +758,46 @@ const GameScreen = ({ gameData, currentScene, choices, isLoading, onChoice, them
         </div>
       </header>
       <main className="story-window">
-        {isLoading && !currentScene ? <p className="loading-text">{t('storyLoading')}</p> : <Typewriter text={currentScene} />}
+        {isLoading && scenes.length === 0 ? <p className="loading-text">{t('storyLoading')}</p> : <Typewriter text={scenes[currentPage] || ''} instant={!isLastPage}/>}
       </main>
+      
+      {error && <p className="error-message in-game-error">{error}</p>}
+      
+      {scenes.length > 1 && (
+        <div className="pagination">
+            <button onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0}>{t('prevPage')}</button>
+            <span>{t('pageIndicator', currentPage + 1, scenes.length)}</span>
+            <button onClick={() => setCurrentPage(currentPage + 1)} disabled={isLastPage}>{t('nextPage')}</button>
+        </div>
+      )}
+
       <footer className="interaction-area">
-        {isLoading ? (
-          <p className="loading-text">{t('playerChoiceLoading')}</p>
-        ) : showDirectInput ? (
-          <form className="direct-input-area" onSubmit={handleDirectSubmit}>
-            <input 
-              type="text" 
-              value={directInputValue} 
-              onChange={(e) => setDirectInputValue(e.target.value)}
-              placeholder={t('directInputPlaceholder')}
-              autoFocus
-            />
-            <button type="submit">{t('submit')}</button>
-            <button type="button" onClick={() => setShowDirectInput(false)} style={{background: 'var(--secondary-color)'}}>{t('cancel')}</button>
-          </form>
-        ) : (
-          <div className="choices">
-            {choices.map((choice, index) => (
-              <button key={index} onClick={() => onChoice(choice.text)}>
-                {choice.text}
-                {choice.requires && <small style={{display: 'block', opacity: 0.8}}>({choice.requires})</small>}
-              </button>
-            ))}
-            <button onClick={() => setShowDirectInput(true)} style={{background: 'var(--secondary-color)'}}>{t('directInputAction')}</button>
-          </div>
+        {isLastPage && (
+          isLoading ? (
+            <p className="loading-text">{t('playerChoiceLoading')}</p>
+          ) : showDirectInput ? (
+            <form className="direct-input-area" onSubmit={handleDirectSubmit}>
+              <input 
+                type="text" 
+                value={directInputValue} 
+                onChange={(e) => setDirectInputValue(e.target.value)}
+                placeholder={t('directInputPlaceholder')}
+                autoFocus
+              />
+              <button type="submit">{t('submit')}</button>
+              <button type="button" onClick={() => setShowDirectInput(false)} style={{background: 'var(--secondary-color)'}}>{t('cancel')}</button>
+            </form>
+          ) : (
+            <div className="choices">
+              {choices.map((choice, index) => (
+                <button key={index} onClick={() => onChoice(choice.text)}>
+                  {choice.text}
+                  {choice.requires && <small style={{display: 'block', opacity: 0.8}}>({choice.requires})</small>}
+                </button>
+              ))}
+              <button onClick={() => setShowDirectInput(true)} style={{background: 'var(--secondary-color)'}}>{t('directInputAction')}</button>
+            </div>
+          )
         )}
       </footer>
     </div>
