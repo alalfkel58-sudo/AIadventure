@@ -1,0 +1,5 @@
+{
+  "name": "Copy of React Text Adventure Engine",
+  "description": "A dynamic text adventure game engine built with React and TypeScript. It uses an external JSON file for story content, allowing for easy creation and modification of scenarios. Features include a typewriter effect for dialogue, player stats, inventory, conditional branching, and an auto-save system.",
+  "requestFramePermissions": []
+}
