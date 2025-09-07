@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { GameState, PlayerState, Content, Language } from './types';
 import useGameEngine from './hooks/useGameEngine';
@@ -306,8 +304,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full md:max-w-4xl lg:max-w-6xl md:h-[95vh] md:my-4 flex flex-col bg-white dark:bg-black shadow-2xl md:rounded-lg border border-transparent md:border-gray-200 dark:md:border-gray-800 overflow-hidden">
-      <div className="p-4 flex flex-col h-full">
+    <div className="w-full max-w-5xl h-[95vh] flex flex-col bg-white dark:bg-black text-black dark:text-white shadow-2xl rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+      <div className="p-4 flex-shrink-0">
         <AppHeader 
           playerState={playerState} 
           onOpenStats={() => setIsStatPanelOpen(true)}
@@ -322,10 +320,10 @@ const App: React.FC = () => {
           isMuted={isMuted}
           onMuteToggle={handleMuteToggle}
         />
-        <main className="flex-grow relative overflow-y-scroll">
-          {renderContent()}
-        </main>
       </div>
+      <main className="flex-grow relative overflow-y-auto px-4 pb-4">
+        {renderContent()}
+      </main>
       <StatPanel 
         playerState={playerState} 
         isOpen={isStatPanelOpen} 
